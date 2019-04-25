@@ -1,0 +1,665 @@
+options
+{
+  static = true;
+  DEBUG_PARSER = false;
+  IGNORE_CASE = true; //case insensitive
+}
+
+
+PARSER_BEGIN(DavinDBMSParser)
+//import
+package davinDBMS;
+import davinDBMS.entity.*;
+import davinDBMS.query.*;
+
+import java.io.File;
+import java.util.ArrayList;
+
+import com.sleepycat.je.Database;
+import com.sleepycat.je.DatabaseException;
+import com.sleepycat.je.DatabaseConfig;
+import com.sleepycat.je.Cursor;
+
+import com.sleepycat.je.Environment;
+import com.sleepycat.je.EnvironmentConfig;
+
+
+public class DavinDBMSParser
+{  
+  
+  public static void main(String args[]) throws ParseException
+  {
+    //Environment & Database define
+    Environment davinDbEnvironment = null;
+    Database davinDatabase = null;
+
+	/* OPENING DB */
+	//Open Database Environment or if not, create one.
+    EnvironmentConfig envConfig = new EnvironmentConfig();
+    envConfig.setAllowCreate(true);
+
+    File dbDirectory = new File("db/");
+    if(!dbDirectory.exists()) {
+	  dbDirectory.mkdirs();
+    }
+    
+    davinDbEnvironment = new Environment(new File("db/"), envConfig);
+
+    //Open Database or if not, create one.
+	DatabaseConfig dbConfig = new DatabaseConfig();
+	dbConfig.setAllowCreate(true);
+	dbConfig.setSortedDuplicates(true);
+	davinDatabase = davinDbEnvironment.openDatabase(null, "davinDatabase", dbConfig);
+
+    
+    DavinDBMSParser parser = new DavinDBMSParser(System.in);
+    System.out.print("DB_2014-16187> ");
+
+    //iterate until EXIT
+    while (true)
+    {
+	  ArrayList<Query> queries = new ArrayList<Query>(); //can process multiple queries in one line
+      
+      try { 
+	      parser.command(queries);
+	  }
+	  catch (ParseException e) {
+          System.out.println(Messages.SYNTAX_ERROR.getMessage()); //print syntax error message
+          DavinDBMSParser.ReInit(System.in); //iterate again
+      }
+	  finally { //although one of queries has syntax error, preceding queries should be processed
+		for(Query query : queries) { //process queries one by one
+		  if(query.getType() == Query.QueryType.EXIT) { //if EXIT
+			exit(davinDatabase, davinDbEnvironment); //close DB and terminate this program
+		  }
+		  else {
+			query.apply(davinDatabase); //apply the query according to its type
+		  }
+		}
+
+		System.out.print("DB_2014-16187> ");
+	  }
+    }
+  }
+
+  //close DB and terminate this program
+  public static void exit(Database database, Environment dbEnvironment) {
+    /* CLOSING DB */
+	if(database != null) database.close();
+	if(dbEnvironment != null) dbEnvironment.close();
+	
+	System.exit(0); //end of program
+  }
+}
+
+PARSER_END(DavinDBMSParser)
+
+
+//ignore these tokens
+SKIP : { " " | "\r" | "\t" | "\n" }
+
+TOKEN : //Keywords
+{
+  < EXIT : "exit" >
+| < INT : "int" >
+| < CHAR : "char" >
+| < DATE : "date" >
+| < CREATE_TABLE : "create table" (" " | "\t" | "\n") > //tableName must come after blank 
+| < NOT_NULL : "not null" >
+| < PRIMARY_KEY : "primary key" >
+| < FOREIGN_KEY : "foreign key" >
+| < REFERENCES : "references" >
+| < DROP_TABLE : "drop table" (" " | "\t" | "\n") > //tableName must come after blank
+| < DESC : "desc" >
+| < INSERT_INTO : "insert into" (" " | "\t" | "\n") > //tableName must come after blank
+| < VALUES : "values" >
+| < NULL : "null" >
+| < DELETE_FROM : "delete from" (" " | "\t" | "\n") > //tableName must come after blank
+| < WHERE : "where" >
+| < OR : (" " | "\t" | "\n") "or" > //or must come after blank
+| < AND : (" " | "\t" | "\n") "and" > //and must come after blank
+| < NOT : "not" >
+| < SELECT : "select" >
+| < AS : "as" >
+| < FROM : "from" >
+| < IS_NULL : "is null" >
+| < IS_NOT_NULL : "is not null" >
+| < SHOW_TABLES : "show tables" >
+}
+
+TOKEN : //other tokens
+{
+  < SEMICOLON : ";" >
+| < END_OF_QUERIES : ";"(" " | "\t")*"\r" | ";"(" " | "\t")*"\n"> //needed to process each query in time
+| < LEFT_PAREN : "(" >
+| < RIGHT_PAREN : ")" >
+| < COMMA : "," >
+| < UNDERSCORE : "_" >
+| < INT_VALUE : (< SIGN >)? (< DIGIT >)+ >
+| < SIGN : "+" | "-" >
+| < DIGIT : [ "0"-"9" ] >
+| < PERIOD : "." >
+| < ASTERISK : "*" >
+| < COMP_OP : "<" | ">" | "=" | ">=" | "<=" | "!=" >
+| < LEGAL_IDENTIFIER : < ALPHABET > (< ALPHABET > | < UNDERSCORE >)* >
+| < ALPHABET : [ "a"-"z", "A"-"Z" ] >
+| < CHAR_STRING : < OPEN_QUOTE > (< NON_QUOTE_CHARACTERS >)* < CLOSE_QUOTE > >
+| < NON_QUOTE_CHARACTERS : < DIGIT > | < ALPHABET > | < NON_QUOTE_SPECIAL_CHARACTERS > | < SPACE > > 
+| < NON_QUOTE_SPECIAL_CHARACTERS : "!" | "@" | "#" | "$" | "%" | "^" | "&" | "*" | "(" | ")"
+  | "-" | "_" | "=" | "+" | "`" | "~" | "[" | "]" | "{" | "}" | ";" | ":" | "," | "." | "<" | ">" | "\\" | "|" | "/" | "?"
+  | " " | "\t" | "\n" >
+| < OPEN_QUOTE : "'" >: STRING //if catch QUOTE, switch state to STRING
+| < DATE_VALUE : < NNNN > "-" < NN > "-" < NN > >
+| < NNNN : < DIGIT > < DIGIT > < DIGIT > < DIGIT > >
+| < NN : < DIGIT > < DIGIT > >
+}
+
+< STRING > TOKEN : //tokens in STRING STATE
+{
+  < SPACE : " " >
+| < CLOSE_QUOTE : "'" >: DEFAULT //if catch the other QUOTE, switch state to DEFAULT 
+}
+
+
+void command(ArrayList<Query> queries) : //every query and EXIT are commands
+{
+  Query query;
+}
+{
+  (
+    < EXIT >
+    < END_OF_QUERIES >
+    {
+      query = new ExitQuery();
+      queries.add(query);
+    }
+  )
+| queryList(queries)
+}
+
+void queryList(ArrayList<Query> queries) : //every query ends with SEMICOLON
+{
+  Query query = null;
+}
+{
+  query = query()
+  ( 
+    < SEMICOLON >
+    {
+    queries.add(query);
+    }
+    query = query()
+  )* //* means appearing more than zero
+  < END_OF_QUERIES >
+  {
+    queries.add(query);
+  }
+}
+
+Query query() : //every query
+{
+  Query query = null;
+}
+{
+  (
+    (
+      query = createTableQuery()
+    )
+  | (
+      query = dropTableQuery()
+    )
+  | (
+      query = descQuery()
+    )
+  | (
+      insertQuery()
+    )
+  | (
+      deleteQuery()
+    )
+  | (
+      selectQuery()
+    )
+  | (
+      query = showTablesQuery()
+    )
+  )
+  
+  //execute for every query
+  {
+    return query;
+  }
+}
+
+
+//query grammar
+CreateTableQuery createTableQuery() :
+{
+  CreateTableQuery query = new CreateTableQuery();
+  Table table;
+  String name;
+}
+{
+  < CREATE_TABLE >
+  name = tableName()
+  {
+    table = new Table(name);
+    query.setTable(table);
+  }
+  tableElementList(query)
+  {
+    return query;
+  }
+}
+
+DropTableQuery dropTableQuery() :
+{
+  DropTableQuery query = new DropTableQuery();
+  Table table;
+  String name;
+}
+{
+  < DROP_TABLE >
+  name = tableName()
+  {
+    table = new Table(name);
+    query.setTable(table);
+    return query;
+  }
+}
+
+DescQuery descQuery() :
+{
+  DescQuery query = new DescQuery();
+  Table table;
+  String name;
+}
+{
+  < DESC >
+  name = tableName()
+  {
+    table = new Table(name);
+    query.setTable(table);
+    return query;
+  }
+}
+
+void insertQuery() :
+{}
+{
+  < INSERT_INTO >
+  tableName()
+  insertColumnsAndSource()
+}
+
+void deleteQuery() :
+{}
+{
+  < DELETE_FROM >
+  tableName()
+  (    whereClause()
+  )? //? means appearing zero or one times
+}
+
+void selectQuery() :
+{}
+{
+  < SELECT >
+  selectList()
+  tableExpression()
+}
+
+ShowTablesQuery showTablesQuery() :
+{
+  ShowTablesQuery query = new ShowTablesQuery();
+}
+{
+  < SHOW_TABLES >
+  {
+    return query;
+  }
+}
+
+
+//specification of each element of queries
+void tableElementList(CreateTableQuery query) :
+{}
+{
+  < LEFT_PAREN >
+  tableElement(query)
+  (
+    < COMMA >
+    tableElement(query)
+  )* //* means appearing more than zero
+  < RIGHT_PAREN >
+}
+
+void tableElement(CreateTableQuery query) :
+{}
+{
+  columnDefinition(query.getTable())
+| tableConstraintDefinition(query)
+}
+
+void columnDefinition(Table table) :
+{
+  String name;
+  Column column;
+}
+{
+  name = columnName()
+  {
+    column = new Column(name);
+  }
+  dataType(column)
+  (
+    < NOT_NULL >
+    {
+      column.setNotNull();
+    }
+  )?
+  {
+    table.addColumn(column);
+  }
+}
+
+void tableConstraintDefinition(CreateTableQuery query) :
+{}
+{
+  primaryKeyConstraint(query)
+| referentialConstraint(query)
+}
+
+void primaryKeyConstraint(CreateTableQuery query) :
+{
+  ArrayList<String> primaryKeys;
+}
+{
+  < PRIMARY_KEY >
+  primaryKeys = columnNameList()
+  {
+    query.setPrimaryKeys(primaryKeys);
+  }
+}
+
+void referentialConstraint(CreateTableQuery query) :
+{
+  Reference reference;
+  ArrayList<String> foreignKeys;
+  String referToTableName;
+  ArrayList<String> referToColumnsName;
+}
+{
+  < FOREIGN_KEY >
+  foreignKeys = columnNameList()
+  < REFERENCES >
+  referToTableName = tableName()
+  referToColumnsName = columnNameList()
+  {
+    reference = new Reference(foreignKeys, referToTableName, referToColumnsName);
+    query.getReferences().add(reference);
+  }
+}
+
+ArrayList<String> columnNameList() :
+{
+  ArrayList<String> names = new ArrayList<String>();
+  String name;
+}
+{
+  < LEFT_PAREN >
+  name = columnName()
+  {
+    names.add(name);
+  }
+  (
+    < COMMA >
+    name = columnName()
+    {
+      names.add(name);
+    }
+  )*
+  < RIGHT_PAREN >
+  {
+    return names;
+  }
+}
+
+void dataType(Column column) :
+{
+  Token nToken;
+}
+{
+  < INT >
+  {
+    column.setType(Column.DataType.INT);
+  }
+| (
+    < CHAR >
+    {
+      column.setType(Column.DataType.CHAR);
+    }
+    < LEFT_PAREN >
+    nToken = < INT_VALUE >
+    {
+      column.setCharLength(Integer.parseInt(nToken.image));
+    }
+    < RIGHT_PAREN >
+  )
+| < DATE >
+  {
+    column.setType(Column.DataType.DATE);
+  }
+}
+
+String tableName() :
+{
+  Token nameToken;
+}
+{
+  nameToken = < LEGAL_IDENTIFIER >
+  {
+    return nameToken.image.toLowerCase();
+  }
+}
+
+String columnName() :
+{
+  Token nameToken;
+}
+{
+  nameToken = < LEGAL_IDENTIFIER >
+  {
+    return nameToken.image.toLowerCase();
+  }
+}
+
+void insertColumnsAndSource() :
+{}
+{
+  (
+    columnNameList()
+  )?
+  valueList()
+}
+
+void valueList() :
+{}
+{
+  < VALUES >
+  < LEFT_PAREN >
+  value()
+  (
+    < COMMA >
+    value()
+  )*
+  < RIGHT_PAREN >
+}
+
+void value() :
+{}
+{
+  < NULL >
+| comparableValue()
+}
+
+void comparableValue() :
+{}
+{
+  < INT_VALUE >
+| < CHAR_STRING >
+| < DATE_VALUE >
+}
+
+void whereClause() :
+{}
+{
+  < WHERE >
+  booleanValueExpression()
+}
+
+void booleanValueExpression() :
+{}
+{
+  booleanTerm()
+  (    < OR >
+    booleanTerm()
+  )*
+}
+
+void booleanTerm() :
+{}
+{
+  booleanFactor()
+  (    < AND >
+    booleanFactor()
+  )*
+}
+
+void booleanFactor() :
+{}
+{
+  (    < NOT >
+  )?
+  booleanTest()
+}
+
+void booleanTest() :
+{}
+{
+  predicate()
+| parenthesizedBooleanExpression()
+}
+
+void predicate() :
+{}
+{
+  LOOKAHEAD(4) //check following 4 tokens before judging
+  comparisonPredicate()
+| nullPredicate()
+}
+
+void comparisonPredicate() :
+{}
+{
+  compOperand()
+  < COMP_OP >
+  compOperand()
+}
+
+void compOperand() :
+{}
+{
+  comparableValue()
+| (
+    LOOKAHEAD(2) //check following 2 tokens before judging
+    tableName()
+    < PERIOD >
+  )?
+  columnName()
+}
+
+void parenthesizedBooleanExpression() :
+{}
+{
+  < LEFT_PAREN >
+  booleanValueExpression()
+  < RIGHT_PAREN >
+}
+
+void nullPredicate() :
+{}
+{
+  (
+    LOOKAHEAD(2) //check following 2 tokens before judging
+    tableName()
+    < PERIOD >
+  )?
+  columnName()
+  nullOperation()
+}
+
+void nullOperation() :
+{}
+{
+  < IS_NULL >
+| < IS_NOT_NULL >
+}
+
+void selectList() :
+{}
+{
+  < ASTERISK >
+| selectedColumn()
+  (    < COMMA >
+    selectedColumn()
+  )*
+}
+
+void selectedColumn() :
+{}
+{
+  (
+    LOOKAHEAD(2) //check following 2 tokens before judging    tableName()
+    < PERIOD >
+  )?
+  columnName()
+  (
+    < AS >
+    columnName()
+  )?
+}
+
+void tableExpression() :
+{}
+{
+  fromClause()
+  (
+    whereClause()
+  )?
+}
+
+void fromClause() :
+{}
+{
+  < FROM >
+  tableReferenceList()
+}
+
+void tableReferenceList() :
+{}
+{
+  referedTable()
+  (    < COMMA >
+    referedTable()
+  )*
+}
+
+void referedTable() :
+{}
+{
+  tableName()
+  (    < AS >
+    tableName()
+  )?
+}
