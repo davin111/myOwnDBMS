@@ -212,13 +212,13 @@ Query query() : //every query
       query = descQuery()
     )
   | (
-      insertQuery()
+      query = insertQuery()
     )
   | (
       deleteQuery()
     )
   | (
-      selectQuery()
+      query = selectQuery()
     )
   | (
       query = showTablesQuery()
@@ -284,12 +284,21 @@ DescQuery descQuery() :
   }
 }
 
-void insertQuery() :
-{}
+InsertQuery insertQuery() :
+{
+  InsertQuery query = new InsertQuery();
+  Table table;
+  String name;
+}
 {
   < INSERT_INTO >
-  tableName()
-  insertColumnsAndSource()
+  name = tableName()
+  insertColumnsAndSource(query)
+  {
+    table = new Table(name);
+    query.setTable(table);
+    return query;
+  }
 }
 
 void deleteQuery() :
@@ -301,12 +310,17 @@ void deleteQuery() :
   )? //? means appearing zero or one times
 }
 
-void selectQuery() :
-{}
+SelectQuery selectQuery() :
+{
+  SelectQuery query = new SelectQuery();
+}
 {
   < SELECT >
-  selectList()
-  tableExpression()
+  selectList(query)
+  tableExpression(query)
+  {
+    return query;
+  }
 }
 
 ShowTablesQuery showTablesQuery() :
@@ -474,41 +488,93 @@ String columnName() :
   }
 }
 
-void insertColumnsAndSource() :
-{}
+void insertColumnsAndSource(InsertQuery query) :
+{
+  ArrayList<String> columnsName;
+  ArrayList<Value> values;
+}
 {
   (
-    columnNameList()
+    columnsName = columnNameList()
+    {
+      query.setColumnsName(columnsName);
+    }
   )?
-  valueList()
+  values = valueList()
+  {
+    query.setValues(values);
+  }
 }
 
-void valueList() :
-{}
+ArrayList<Value> valueList() :
+{
+  ArrayList<Value> values = new ArrayList<Value>();
+  Value value;
+}
 {
   < VALUES >
   < LEFT_PAREN >
-  value()
+  value = value()
+  {
+    values.add(value);
+  }
   (
     < COMMA >
-    value()
+    value = value()
+    {
+      values.add(value);
+    }
   )*
   < RIGHT_PAREN >
+  {
+    return values;
+  }
 }
 
-void value() :
-{}
+Value value() :
 {
-  < NULL >
-| comparableValue()
+  Value value;
+  Token valueToken;
+}
+{
+  (    valueToken = < NULL >
+    {
+      return new Value(valueToken.image);
+    }
+  | value = comparableValue()
+    {
+      return value;
+    }
+  )
 }
 
-void comparableValue() :
-{}
+Value comparableValue() :
 {
-  < INT_VALUE >
-| < CHAR_STRING >
-| < DATE_VALUE >
+  Value value = new Value();
+  String valueString;
+  Token valueToken;
+}
+{
+  (    valueToken = < INT_VALUE >
+    {
+      valueString = valueToken.image;
+      value.setType(Column.DataType.INT);
+    }
+  | valueToken = < CHAR_STRING >
+    {
+      valueString = valueToken.image.substring(1, valueToken.image.length()-1);
+      value.setType(Column.DataType.CHAR);
+    }
+  | valueToken = < DATE_VALUE >
+    {
+      valueString = valueToken.image;
+      value.setType(Column.DataType.DATE);
+    }
+  )
+  {
+    value.setVal(valueString);
+    return value;
+  }
 }
 
 void whereClause() :
@@ -606,7 +672,7 @@ void nullOperation() :
 | < IS_NOT_NULL >
 }
 
-void selectList() :
+void selectList(SelectQuery query) :
 {}
 {
   < ASTERISK >
@@ -630,36 +696,63 @@ void selectedColumn() :
   )?
 }
 
-void tableExpression() :
-{}
+void tableExpression(SelectQuery query) :
 {
-  fromClause()
+  ArrayList<String[]> names;
+}
+{
+  names = fromClause()
+  {
+    query.setFromTables(names);
+  }
   (
     whereClause()
   )?
 }
 
-void fromClause() :
-{}
+ArrayList<String[]> fromClause() :
+{
+  ArrayList<String[]> names;
+}
 {
   < FROM >
-  tableReferenceList()
+  names = tableReferenceList()
+  {
+    return names;
+  }
 }
 
-void tableReferenceList() :
-{}
+ArrayList<String[]> tableReferenceList() :
 {
-  referedTable()
+  ArrayList<String[]> names = new ArrayList<String[]>();
+  String[] name;
+}
+{
+  name = referedTable()
+  {
+    names.add(name); 
+  }
   (    < COMMA >
-    referedTable()
+    name = referedTable()
+    {
+      names.add(name);
+    }
   )*
+  {
+    return names;
+  }
 }
 
-void referedTable() :
-{}
+String[] referedTable() :
 {
-  tableName()
+  String[] name = new String[2];
+}
+{
+  name[1] = tableName()
   (    < AS >
-    tableName()
+    name[2] = tableName()
   )?
+  {
+    return name;
+  }
 }

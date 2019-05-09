@@ -20,7 +20,25 @@ public enum Messages { //error and success messages used in this program
   
   NO_SUCH_TABLE("No such table"),
   
-  CHAR_LENGTH_ERROR("Char length should be over 0");
+  CHAR_LENGTH_ERROR("Char length should be over 0"),
+	
+  INSERT_RESULT("The row is inserted"),
+  INSERT_DUPLICATE_PRIMARY_KEY_ERROR("Insertion has failed: Primary key duplication"),
+  INSERT_REFERENTIAL_INTEGRITY_ERROR("Insertion has failed: Referential integrity violation"),
+  INSERT_TYPE_MISMATCH_ERROR("Insertion has failed: Types are not matched"),
+  INSERT_COLUMN_EXISTENCE_ERROR("Insertion has failed: '%s' does not exist"),
+  INSERT_COLUMN_NON_NULLABLE_ERROR("Insertion has failed: '%s' is not nullable"),
+  
+  DELETE_RESULT("%d row(s) are deleted"),
+  DELETE_REFERENTIAL_INTEGRITY_ERROR("%d row(s) are not deleted due to referential integrity"),
+  
+  SELECT_TABLE_EXISTENCE_ERROR("Selection has failed: '%s' does not exist"),
+  SELECT_COLUMN_RESOLVE_ERROR("Selection has failed: fail to resolve '%s'"),
+  
+  WHERE_INCOMPARABLE_ERROR("Where clause try to compare incomparable values"),
+  WHERE_TABLE_NOT_SPECIFIED("Where clause try to reference tables which are not specified"),
+  WHERE_COLUMN_NOT_EXIST("Where clause try to reference non existing column"),
+  WHERE_AMBIGUOUS_REFERENCE("Where clause contains ambiguous reference");
   
   
   private String msg;
