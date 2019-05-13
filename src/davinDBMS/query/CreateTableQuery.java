@@ -94,7 +94,7 @@ public class CreateTableQuery extends DDLQuery { //DDLQuery extends Query
 	  }
 	  catch (UnsupportedEncodingException e) {
 		  e.printStackTrace();
-		  }
+	  }
 	  finally {
 		  cursor.close();
 	  }

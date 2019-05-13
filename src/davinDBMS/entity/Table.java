@@ -69,4 +69,30 @@ public class Table implements Serializable {
 		
 		return baos.toByteArray();
 	}
+	
+	
+	public Table product(Table otherTable){
+		Table resultTable = new Table();
+		Record newRecord = null;
+		
+		for(Column column : this.columns) {
+			resultTable.columns.add(column);
+		}
+		
+		for(Column column : otherTable.columns) {
+			resultTable.columns.add(column);
+		}
+		
+		for(Record record : this.records) {
+			for(Record otherRecord : otherTable.records) {
+				newRecord = new Record(record);
+				newRecord.putAllValue(otherRecord);
+				
+				resultTable.records.add(newRecord);
+			}
+		}
+		
+		
+		return resultTable;
+	}
 }

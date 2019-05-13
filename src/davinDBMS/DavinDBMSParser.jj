@@ -577,72 +577,140 @@ Value comparableValue() :
   }
 }
 
-void whereClause() :
-{}
+ArrayList<ArrayList<BooleanFactor>> whereClause() :
+{
+  ArrayList<ArrayList<BooleanFactor>> boolExp;
+}
 {
   < WHERE >
-  booleanValueExpression()
+  boolExp = booleanValueExpression()
+  {
+    return boolExp;
+  }
 }
 
-void booleanValueExpression() :
-{}
+ArrayList<ArrayList<BooleanFactor>> booleanValueExpression() :
 {
-  booleanTerm()
+  ArrayList<ArrayList<BooleanFactor>> boolExp = new ArrayList<ArrayList<BooleanFactor>>();
+  ArrayList<BooleanFactor> boolTerm;
+}
+{
+  boolTerm = booleanTerm()
+  {
+    boolExp.add(boolTerm);
+  }
   (    < OR >
-    booleanTerm()
+    boolTerm = booleanTerm()
+    {
+      boolExp.add(boolTerm);
+    }
   )*
+  {
+    return boolExp;
+  }
 }
 
-void booleanTerm() :
-{}
+ArrayList<BooleanFactor> booleanTerm() :
 {
-  booleanFactor()
+  ArrayList<BooleanFactor> boolTerm = new ArrayList<BooleanFactor>();
+  BooleanFactor boolFactor;
+}
+{
+  boolFactor = booleanFactor()
+  {
+    boolTerm.add(boolFactor);
+  }
   (    < AND >
-    booleanFactor()
+    boolFactor = booleanFactor()
+    {
+      boolTerm.add(boolFactor);
+    }
   )*
+  {
+    return boolTerm;
+  }
 }
 
-void booleanFactor() :
-{}
+BooleanFactor booleanFactor() :
+{
+  BooleanFactor bf = new BooleanFactor();
+}
 {
   (    < NOT >
+    {
+      bf.setNot();
+    }
   )?
-  booleanTest()
+  booleanTest(bf)
+  {
+    return bf;
+  }
 }
 
-void booleanTest() :
+void booleanTest(BooleanFactor bf) :
 {}
 {
-  predicate()
+  predicate(bf)
 | parenthesizedBooleanExpression()
 }
 
-void predicate() :
+void predicate(BooleanFactor bf) :
 {}
 {
   LOOKAHEAD(4) //check following 4 tokens before judging
-  comparisonPredicate()
-| nullPredicate()
+  comparisonPredicate(bf)
+| nullPredicate(bf)
 }
 
-void comparisonPredicate() :
-{}
+void comparisonPredicate(BooleanFactor bf) :
 {
-  compOperand()
-  < COMP_OP >
-  compOperand()
+  bf.setType(BooleanFactor.PredicateType.COMP);
+  CompValue cValue;
+  Token opToken;
+}
+{
+  cValue = compOperand()
+  {
+    bf.setFirstOperand(cValue);
+  }
+  opToken = < COMP_OP >
+  {
+    bf.setOperator(opToken.image);
+  }
+  cValue = compOperand()
+  {
+    bf.setSecondOperand(cValue);
+  }
 }
 
-void compOperand() :
-{}
+CompValue compOperand() :
 {
-  comparableValue()
-| (
-    LOOKAHEAD(2) //check following 2 tokens before judging
-    tableName()
-    < PERIOD >
-  )?
-  columnName()
+  CompValue cValue;
+  String name;
+}
+{
+  (    cValue = comparableValue()
+  |
+    {
+      TCPair tc = new TCPair();
+    }
+    (
+      LOOKAHEAD(2) //check following 2 tokens before judging
+      name = tableName()
+      {
+        tc.setTableName(name);
+      }
+      < PERIOD >
+    )?
+    name = columnName()
+    {
+      tc.setColumnName(name);
+      cValue = tc;
+    }
+  )
+  {
+    return cValue;
+  }
 }
 
 void parenthesizedBooleanExpression() :
@@ -653,23 +721,40 @@ void parenthesizedBooleanExpression() :
   < RIGHT_PAREN >
 }
 
-void nullPredicate() :
-{}
+void nullPredicate(BooleanFactor bf) :
+{
+  bf.setType(BooleanFactor.PredicateType.NULL);
+  TCPair tc = new TCPair();
+  String name, op;
+}
 {
   (
     LOOKAHEAD(2) //check following 2 tokens before judging
-    tableName()
+    name = tableName()
+    {
+      tc.setTableName(name);
+    }
     < PERIOD >
   )?
-  columnName()
-  nullOperation()
+  name = columnName()
+  op = nullOperation()
+  {
+    tc.setColumnName(name);
+    bf.setFirstOperand(tc);
+    bf.setOperator(op);
+  }
 }
 
-void nullOperation() :
-{}
+String nullOperation() :
 {
-  < IS_NULL >
-| < IS_NOT_NULL >
+  Token opToken;
+}
+{
+  opToken = < IS_NULL >
+| opToken = < IS_NOT_NULL >
+  {
+    return opToken.image;
+  }
 }
 
 void selectList(SelectQuery query) :
@@ -699,6 +784,7 @@ void selectedColumn() :
 void tableExpression(SelectQuery query) :
 {
   ArrayList<String[]> names;
+  ArrayList<ArrayList<BooleanFactor>> boolExp;
 }
 {
   names = fromClause()
@@ -706,7 +792,10 @@ void tableExpression(SelectQuery query) :
     query.setFromTables(names);
   }
   (
-    whereClause()
+    boolExp = whereClause()
+    {
+      query.setBoolExp(boolExp);
+    }
   )?
 }
 

@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 import davinDBMS.entity.Column.DataType;
 
-public class Value implements Serializable {
+public class Value implements Serializable, CompValue {
 	private DataType dataType;
 	private int intVal;
 	private String strVal;
