@@ -26,6 +26,14 @@ public class InsertQuery extends DMLQuery {
 		try {
 			check(db);
 			insert(db);
+			
+			//update the content of referred tables in DB
+			for(Column column : table.getColumns()) { //for each column of this table
+				Table referToTable = column.getReferToTable();
+				if(referToTable != null) { //if there is a table referred by this column	
+					updateTable(db, referToTable); //update the content of referred table in DB
+				}
+			}
 		}
 		catch (QueryException qe) {
 			System.out.println(qe);
@@ -63,18 +71,8 @@ public class InsertQuery extends DMLQuery {
 		boolean columnExists = false;
 		Value value = null;
 		Record record = new Record();
-				
-		//if the size of the value list is not equal to the size of actual columns
-		if(values.size() != table.getColumns().size()) {
-			throw new QueryException(Messages.INSERT_TYPE_MISMATCH_ERROR);
-		}
-				
+								
 		if(columnsName != null) {
-			//if the size of the column name list is not equal to the size of actual columns
-			if(columnsName.size() != table.getColumns().size()) {
-				throw new QueryException(Messages.INSERT_TYPE_MISMATCH_ERROR);
-			}
-					
 			Iterator<Value> iter = values.iterator();
 			for(String columnName : columnsName) {
 				value = iter.next();
@@ -99,9 +97,29 @@ public class InsertQuery extends DMLQuery {
 				if(!columnExists) { //if the column mentioned in the column name list does not exist
 					throw new QueryException(Messages.INSERT_COLUMN_EXISTENCE_ERROR, columnName);
 				}
-			}	
+			}
+			
+			//put null value into unspecified columns
+			for(Column column : table.getColumns()) {
+				if(!columnsName.contains(column.getName())) {
+					if(column.canBeNull()) {
+						if(record.getValue(column) == null) {
+							record.putValue(column, new Value("null"));
+						}
+					}
+					else {
+						throw new QueryException(Messages.INSERT_COLUMN_NON_NULLABLE_ERROR, column.getName());
+					}
+				}
+			}
 		}
+		//when there are no specified the names of columns
 		else {
+			//if the size of the value list is not equal to the size of actual columns
+			if(values.size() != table.getColumns().size()) {
+				throw new QueryException(Messages.INSERT_TYPE_MISMATCH_ERROR);
+			}
+			
 			Iterator<Value> iter = values.iterator();
 			for(Column column : table.getColumns()) {
 				value = iter.next();
@@ -114,8 +132,28 @@ public class InsertQuery extends DMLQuery {
 				}
 			}
 		}
+		
+		//primary key check
+		if(table.getPrimaryKeys().size() > 0) {
+			boolean isSame = false;
+			
+			for(Record rec : table.getRecords()) {
+				isSame = true;
+				for(Column priCol : table.getPrimaryKeys()) {
+					Value recordValue = rec.getValue(priCol);
+					if(!record.getValue(priCol).equals(recordValue)) {
+						isSame = false;
+						break;
+					}
+				}
+				if(isSame) {
+					throw new QueryException(Messages.INSERT_DUPLICATE_PRIMARY_KEY_ERROR);
+				}
+			}
+		}
 				
 		table.addRecord(record);
+		
 		updateTable(db, table);
 		System.out.printf(Messages.INSERT_RESULT.getMessage());
 		System.out.println();
@@ -126,6 +164,7 @@ public class InsertQuery extends DMLQuery {
 		if(value.isNull()) {
 			if(column.canBeNull()) {
 				value.setType(column.getType());
+				return;
 			}
 			else { //if null value is inserted to the non nullable column
 				throw new QueryException(Messages.INSERT_COLUMN_NON_NULLABLE_ERROR, column.getName());
@@ -135,24 +174,15 @@ public class InsertQuery extends DMLQuery {
 			value.setVal(value.getStrVal().substring(0, column.getCharLength()));
 		}
 		
-		//primary key check
-		Value recordValue = null;
-		if(column.isPrimaryKey()) {
-			for(Record rec : table.getRecords()) {
-				recordValue = rec.getValue(column);
-				if(value.equals(recordValue)) {
-					throw new QueryException(Messages.INSERT_DUPLICATE_PRIMARY_KEY_ERROR);
-				}
-			}
-		}
-		
 		//foreign key check
+		Value recordValue = null;
 		boolean referToColumnHasVal = false;
 		if(column.isForeignKey()) {
 			for(Record rec : column.getReferToTable().getRecords()) {
 				recordValue = rec.getValue(column.getReferToColumn());
 				if(value.equals(recordValue)) {
 					referToColumnHasVal = true;
+					break;
 				}
 			}
 			if(!referToColumnHasVal) {

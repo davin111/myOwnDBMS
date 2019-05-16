@@ -3,8 +3,14 @@ package davinDBMS.entity;
 import java.io.Serializable;
 
 import davinDBMS.entity.Column.DataType;
+import davinDBMS.query.Messages;
+import davinDBMS.query.QueryException;
 
 public class Value implements Serializable, CompValue {
+	public enum ThreeValue{
+		TRUE, FALSE, UNKNOWN
+	}
+	
 	private DataType dataType;
 	private int intVal;
 	private String strVal;
@@ -51,15 +57,20 @@ public class Value implements Serializable, CompValue {
 		return dataType;
 	}
 	
-	public String getVal() {
-		if(dataType == DataType.INT) {
-			return "" + intVal;
-		}
-		else if(dataType == DataType.CHAR) {
-			return strVal;
+	public String toString() {
+		if(!isNull) {
+			if(dataType == DataType.INT) {
+				return "" + intVal;
+			}
+			else if(dataType == DataType.CHAR) {
+				return strVal;
+			}
+			else {
+				return dateVal;
+			}
 		}
 		else {
-			return dateVal;
+			return "null";
 		}
 	}
 	
@@ -97,15 +108,20 @@ public class Value implements Serializable, CompValue {
 	public boolean equals(Object obj) {
 		if(obj instanceof Value) {
 			Value val = (Value)obj;
-			if(dataType == val.dataType) {
-				if(dataType == DataType.INT) {
-					return intVal == val.intVal;
-				}
-				else if(dataType == DataType.CHAR) {
-					return strVal == val.strVal;
+			if(!isNull && !val.isNull) {
+				if(dataType == val.dataType) {
+					if(dataType == DataType.INT) {
+						return intVal == val.intVal;
+					}
+					else if(dataType == DataType.CHAR) {
+						return strVal.equals(val.strVal);
+					}
+					else {
+						return dateVal.equals(val.dateVal);
+					}
 				}
 				else {
-					return dateVal == val.dateVal;
+					return false;
 				}
 			}
 			else {
@@ -115,5 +131,169 @@ public class Value implements Serializable, CompValue {
 		else {
 			return false;
 		}
+	}
+	
+
+	public ThreeValue compare(Value other, String op) throws QueryException {
+		if(!isNull && !other.isNull) {
+			if(dataType == DataType.INT && other.dataType == DataType.INT) {
+				if(op.equals(">")) {
+					if(intVal > other.intVal) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals("<")) {
+					if(intVal < other.intVal) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals("=")) {
+					if(intVal == other.intVal) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals("!=")) {
+					if(intVal != other.intVal) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals(">=")) {
+					if(intVal >= other.intVal) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals("<=")) {
+					if(intVal <= other.intVal) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+			}
+			else if(dataType == DataType.CHAR && other.dataType == DataType.CHAR) {
+				if(op.equals(">")) {
+					if(strVal.compareToIgnoreCase(other.strVal) > 0) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals("<")) {
+					if(strVal.compareToIgnoreCase(other.strVal) < 0) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals("=")) {
+					if(strVal.compareToIgnoreCase(other.strVal) == 0) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals("!=")) {
+					if(strVal.compareToIgnoreCase(other.strVal) != 0) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals(">=")) {
+					if(strVal.compareToIgnoreCase(other.strVal) >= 0) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals("<=")) {
+					if(strVal.compareToIgnoreCase(other.strVal) <= 0) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+			}
+			else if(dataType == DataType.DATE && other.dataType == DataType.DATE) {
+				if(op.equals(">")) {
+					if(dateVal.compareTo(other.dateVal) > 0) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals("<")) {
+					if(dateVal.compareTo(other.dateVal) < 0) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals("=")) {
+					if(dateVal.compareTo(other.dateVal) == 0) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals("!=")) {
+					if(dateVal.compareTo(other.dateVal) != 0) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals(">=")) {
+					if(dateVal.compareTo(other.dateVal) >= 0) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+				else if(op.equals("<=")) {
+					if(dateVal.compareTo(other.dateVal) <= 0) {
+						return ThreeValue.TRUE;
+					}
+					else {
+						return ThreeValue.FALSE;
+					}
+				}
+			}
+			else {
+				throw new QueryException(Messages.WHERE_INCOMPARABLE_ERROR);
+			}
+		}
+		//at least one of the values is null
+		else {
+			return ThreeValue.UNKNOWN;
+		}
+		return null;
 	}
 }

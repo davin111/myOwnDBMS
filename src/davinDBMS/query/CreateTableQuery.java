@@ -126,6 +126,7 @@ public class CreateTableQuery extends DDLQuery { //DDLQuery extends Query
 			if(primaryKey.equals(column.getName())) {
 				columnExists = true;
 				column.setPrimaryKey(); //set it as an primary key
+				table.getPrimaryKeys().add(column);
 				break;
 			}
 		}

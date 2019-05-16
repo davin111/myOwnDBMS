@@ -215,7 +215,7 @@ Query query() : //every query
       query = insertQuery()
     )
   | (
-      deleteQuery()
+      query = deleteQuery()
     )
   | (
       query = selectQuery()
@@ -301,13 +301,28 @@ InsertQuery insertQuery() :
   }
 }
 
-void deleteQuery() :
-{}
+DeleteQuery deleteQuery() :
+{
+  DeleteQuery query = new DeleteQuery();
+  Table table;
+  String name;
+  ArrayList<ArrayList<BooleanFactor>> boolExp;
+}
 {
   < DELETE_FROM >
-  tableName()
-  (    whereClause()
+  name = tableName()
+  {
+    table = new Table(name);
+    query.setTable(table);
+  }
+  (    boolExp = whereClause()
+    {
+      query.setBoolExp(boolExp);
+    }
   )? //? means appearing zero or one times
+  {
+    return query;
+  }
 }
 
 SelectQuery selectQuery() :
@@ -651,7 +666,7 @@ void booleanTest(BooleanFactor bf) :
 {}
 {
   predicate(bf)
-| parenthesizedBooleanExpression()
+| parenthesizedBooleanExpression(bf)
 }
 
 void predicate(BooleanFactor bf) :
@@ -713,11 +728,16 @@ CompValue compOperand() :
   }
 }
 
-void parenthesizedBooleanExpression() :
-{}
+void parenthesizedBooleanExpression(BooleanFactor bf) :
+{
+  ArrayList<ArrayList<BooleanFactor>> boolExp;
+}
 {
   < LEFT_PAREN >
-  booleanValueExpression()
+  boolExp = booleanValueExpression()
+  {
+    bf.setBoolExp(boolExp);
+  }
   < RIGHT_PAREN >
 }
 
@@ -750,35 +770,64 @@ String nullOperation() :
   Token opToken;
 }
 {
-  opToken = < IS_NULL >
-| opToken = < IS_NOT_NULL >
+  (    opToken = < IS_NULL >
+  | opToken = < IS_NOT_NULL >
+  )
   {
     return opToken.image;
   }
 }
 
 void selectList(SelectQuery query) :
-{}
 {
-  < ASTERISK >
-| selectedColumn()
-  (    < COMMA >
-    selectedColumn()
-  )*
+  ArrayList<TCPair> tcPairs = new ArrayList<TCPair>();
+  TCPair tc;
+}
+{
+  (    < ASTERISK >
+  | tc = selectedColumn()
+    {
+      tcPairs.add(tc);
+    }
+    (      < COMMA >
+      tc = selectedColumn()
+      {
+        tcPairs.add(tc);
+      }
+    )*
+    {
+      query.setSelectedTCPairs(tcPairs);
+    }
+  )
 }
 
-void selectedColumn() :
-{}
+TCPair selectedColumn() :
+{
+  TCPair tc = new TCPair();
+  String name;
+}
 {
   (
-    LOOKAHEAD(2) //check following 2 tokens before judging    tableName()
+    LOOKAHEAD(2) //check following 2 tokens before judging    name = tableName()
+    {
+      tc.setTableName(name);
+    }
     < PERIOD >
   )?
-  columnName()
+  name = columnName()
+  {
+    tc.setColumnName(name);
+  }
   (
     < AS >
-    columnName()
+    name = columnName()
+    {
+      tc.setAlias(name);
+    }
   )?
+  {
+    return tc;
+  }
 }
 
 void tableExpression(SelectQuery query) :
@@ -837,9 +886,9 @@ String[] referedTable() :
   String[] name = new String[2];
 }
 {
-  name[1] = tableName()
+  name[0] = tableName()
   (    < AS >
-    name[2] = tableName()
+    name[1] = tableName()
   )?
   {
     return name;

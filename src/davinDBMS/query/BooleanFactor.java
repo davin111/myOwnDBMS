@@ -1,19 +1,21 @@
 package davinDBMS.query;
 
+import java.util.ArrayList;
+
 import davinDBMS.entity.*;
 
 public class BooleanFactor {
 	public enum PredicateType{
 		  COMP, NULL
 	}
-	public enum ThreeValue{
-		TRUE, FALSE, UNKNOWN
-	}
+	
 	private boolean not = false;
 	private PredicateType predicateType;
 	private String op = null;
-	private CompValue[] operands = null;
-	public ThreeValue val;
+	private CompValue[] operands = new CompValue[2];
+	
+	public boolean isPar = false;
+	private ArrayList<ArrayList<BooleanFactor>> boolExp;
 	
 	
 	public void setNot() {
@@ -50,5 +52,19 @@ public class BooleanFactor {
 	
 	public CompValue[] getOperands() {
 		return operands;
+	}
+	
+	
+	public void setBoolExp(ArrayList<ArrayList<BooleanFactor>> boolExp) {
+		isPar = true;
+		this.boolExp = boolExp;
+	}
+	
+	public boolean isPar() {
+		return isPar;
+	}
+	
+	public ArrayList<ArrayList<BooleanFactor>> getBoolExp(){
+		return boolExp;
 	}
 }
