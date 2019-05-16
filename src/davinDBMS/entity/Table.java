@@ -6,11 +6,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 
 public class Table implements Serializable {
 	private String name;
 	private ArrayList<Column> columns;
 	private ArrayList<Record> records;
+	private ArrayList<Column> primaryKeys = new ArrayList<Column>();
 	
 	
 	//constructors
@@ -40,12 +42,27 @@ public class Table implements Serializable {
 		return records;
 	}
 	
+	public ArrayList<Column> getPrimaryKeys(){
+		return primaryKeys;
+	}
+	
 	public void addColumn(Column column) {
 		columns.add(column);
+		column.setBelongToTable(this);
 	}
 	
 	public void addRecord(Record record) {
 		records.add(record);
+	}
+	
+	public void removeRecords(ArrayList<Record> deleteRecords) {
+		Record rec = null;
+		for(Iterator<Record> iter = records.iterator(); iter.hasNext(); ) {
+			rec = iter.next();
+			if(deleteRecords.contains(rec)) {
+				iter.remove();
+			}
+		}
 	}
 	
 	
@@ -71,7 +88,7 @@ public class Table implements Serializable {
 	}
 	
 	
-	public Table product(Table otherTable){
+	public Table temporaryProduct(Table otherTable){
 		Table resultTable = new Table();
 		Record newRecord = null;
 		

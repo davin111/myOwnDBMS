@@ -144,7 +144,7 @@ public class DavinDBMSParser implements DavinDBMSParserConstants {
       query = insertQuery();
       break;
     case DELETE_FROM:
-      deleteQuery();
+      query = deleteQuery();
       break;
     case SELECT:
       query = selectQuery();
@@ -212,17 +212,26 @@ public class DavinDBMSParser implements DavinDBMSParserConstants {
     throw new Error("Missing return statement in function");
   }
 
-  static final public void deleteQuery() throws ParseException {
+  static final public DeleteQuery deleteQuery() throws ParseException {
+  DeleteQuery query = new DeleteQuery();
+  Table table;
+  String name;
+  ArrayList<ArrayList<BooleanFactor>> boolExp;
     jj_consume_token(DELETE_FROM);
-    tableName();
+    name = tableName();
+    table = new Table(name);
+    query.setTable(table);
     switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
     case WHERE:
-      whereClause();
+      boolExp = whereClause();
+      query.setBoolExp(boolExp);
       break;
     default:
       jj_la1[3] = jj_gen;
       ;
     }
+    {if (true) return query;}
+    throw new Error("Missing return statement in function");
   }
 
   static final public SelectQuery selectQuery() throws ParseException {
@@ -569,7 +578,7 @@ public class DavinDBMSParser implements DavinDBMSParserConstants {
       predicate(bf);
       break;
     case LEFT_PAREN:
-      parenthesizedBooleanExpression();
+      parenthesizedBooleanExpression(bf);
       break;
     default:
       jj_la1[17] = jj_gen;
@@ -638,9 +647,11 @@ public class DavinDBMSParser implements DavinDBMSParserConstants {
     throw new Error("Missing return statement in function");
   }
 
-  static final public void parenthesizedBooleanExpression() throws ParseException {
+  static final public void parenthesizedBooleanExpression(BooleanFactor bf) throws ParseException {
+  ArrayList<ArrayList<BooleanFactor>> boolExp;
     jj_consume_token(LEFT_PAREN);
-    booleanValueExpression();
+    boolExp = booleanValueExpression();
+    bf.setBoolExp(boolExp);
     jj_consume_token(RIGHT_PAREN);
   }
 
@@ -671,23 +682,26 @@ public class DavinDBMSParser implements DavinDBMSParserConstants {
       break;
     case IS_NOT_NULL:
       opToken = jj_consume_token(IS_NOT_NULL);
-    {if (true) return opToken.image;}
       break;
     default:
       jj_la1[20] = jj_gen;
       jj_consume_token(-1);
       throw new ParseException();
     }
+    {if (true) return opToken.image;}
     throw new Error("Missing return statement in function");
   }
 
   static final public void selectList(SelectQuery query) throws ParseException {
+  ArrayList<TCPair> tcPairs = new ArrayList<TCPair>();
+  TCPair tc;
     switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
     case ASTERISK:
       jj_consume_token(ASTERISK);
       break;
     case LEGAL_IDENTIFIER:
-      selectedColumn();
+      tc = selectedColumn();
+      tcPairs.add(tc);
       label_7:
       while (true) {
         switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
@@ -699,8 +713,10 @@ public class DavinDBMSParser implements DavinDBMSParserConstants {
           break label_7;
         }
         jj_consume_token(COMMA);
-        selectedColumn();
+        tc = selectedColumn();
+        tcPairs.add(tc);
       }
+      query.setSelectedTCPairs(tcPairs);
       break;
     default:
       jj_la1[22] = jj_gen;
@@ -709,23 +725,31 @@ public class DavinDBMSParser implements DavinDBMSParserConstants {
     }
   }
 
-  static final public void selectedColumn() throws ParseException {
+  static final public TCPair selectedColumn() throws ParseException {
+  TCPair tc = new TCPair();
+  String name;
     if (jj_2_4(2)) {
-      tableName();
+      //check following 2 tokens before judging
+          name = tableName();
+      tc.setTableName(name);
       jj_consume_token(PERIOD);
     } else {
       ;
     }
-    columnName();
+    name = columnName();
+    tc.setColumnName(name);
     switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
     case AS:
       jj_consume_token(AS);
-      columnName();
+      name = columnName();
+      tc.setAlias(name);
       break;
     default:
       jj_la1[23] = jj_gen;
       ;
     }
+    {if (true) return tc;}
+    throw new Error("Missing return statement in function");
   }
 
   static final public void tableExpression(SelectQuery query) throws ParseException {
@@ -777,11 +801,11 @@ public class DavinDBMSParser implements DavinDBMSParserConstants {
 
   static final public String[] referedTable() throws ParseException {
   String[] name = new String[2];
-    name[1] = tableName();
+    name[0] = tableName();
     switch ((jj_ntk==-1)?jj_ntk():jj_ntk) {
     case AS:
       jj_consume_token(AS);
-      name[2] = tableName();
+      name[1] = tableName();
       break;
     default:
       jj_la1[26] = jj_gen;
@@ -819,6 +843,27 @@ public class DavinDBMSParser implements DavinDBMSParserConstants {
     finally { jj_save(3, xla); }
   }
 
+  static private boolean jj_3R_15() {
+    if (jj_scan_token(LEGAL_IDENTIFIER)) return true;
+    return false;
+  }
+
+  static private boolean jj_3_4() {
+    if (jj_3R_10()) return true;
+    if (jj_scan_token(PERIOD)) return true;
+    return false;
+  }
+
+  static private boolean jj_3_1() {
+    if (jj_3R_9()) return true;
+    return false;
+  }
+
+  static private boolean jj_3R_18() {
+    if (jj_scan_token(DATE_VALUE)) return true;
+    return false;
+  }
+
   static private boolean jj_3_2() {
     if (jj_3R_10()) return true;
     if (jj_scan_token(PERIOD)) return true;
@@ -848,15 +893,21 @@ public class DavinDBMSParser implements DavinDBMSParserConstants {
     return false;
   }
 
+  static private boolean jj_3R_9() {
+    if (jj_3R_11()) return true;
+    if (jj_scan_token(COMP_OP)) return true;
+    if (jj_3R_11()) return true;
+    return false;
+  }
+
   static private boolean jj_3R_12() {
     if (jj_3R_14()) return true;
     return false;
   }
 
-  static private boolean jj_3R_9() {
-    if (jj_3R_11()) return true;
-    if (jj_scan_token(COMP_OP)) return true;
-    if (jj_3R_11()) return true;
+  static private boolean jj_3_3() {
+    if (jj_3R_10()) return true;
+    if (jj_scan_token(PERIOD)) return true;
     return false;
   }
 
@@ -880,33 +931,6 @@ public class DavinDBMSParser implements DavinDBMSParserConstants {
     jj_scanpos = xsp;
     if (jj_3R_13()) return true;
     }
-    return false;
-  }
-
-  static private boolean jj_3_3() {
-    if (jj_3R_10()) return true;
-    if (jj_scan_token(PERIOD)) return true;
-    return false;
-  }
-
-  static private boolean jj_3R_15() {
-    if (jj_scan_token(LEGAL_IDENTIFIER)) return true;
-    return false;
-  }
-
-  static private boolean jj_3_4() {
-    if (jj_3R_10()) return true;
-    if (jj_scan_token(PERIOD)) return true;
-    return false;
-  }
-
-  static private boolean jj_3_1() {
-    if (jj_3R_9()) return true;
-    return false;
-  }
-
-  static private boolean jj_3R_18() {
-    if (jj_scan_token(DATE_VALUE)) return true;
     return false;
   }
 

@@ -96,7 +96,7 @@ public abstract class Query {
 		
 		cursor.put(key, data);
 		
-		//need to update tables referring this table (recursive - risky)
+		//need to update tables referring this table (recursive)
 		for(Column column : table.getColumns()) {
 			if(column.getReferredByTables().size() != 0) {
 				for(Table getReferredByTable : column.getReferredByTables()) {

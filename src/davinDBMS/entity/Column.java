@@ -15,6 +15,7 @@ public class Column implements Serializable {
   private boolean isPri = false;
   private boolean isFor = false;
   
+  private Table belongToTable = null;
   private Table referToTable = null;
   private Column referToColumn = null;
   
@@ -78,6 +79,10 @@ public class Column implements Serializable {
   }
   
   
+  public void setBelongToTable(Table table) {
+	  belongToTable = table;
+  }
+  
   public void setReferToTable(Table table) {
 	  referToTable = table;
   }
@@ -86,6 +91,10 @@ public class Column implements Serializable {
 	  referToColumn = column;
   }
   
+  
+  public Table getBelongToTable() {
+	  return belongToTable;
+  }
   
   public Table getReferToTable() {
 	  return referToTable;
